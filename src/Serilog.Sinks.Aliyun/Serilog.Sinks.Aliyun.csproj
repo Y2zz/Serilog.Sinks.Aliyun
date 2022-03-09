@@ -7,13 +7,14 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <LangVersion>default</LangVersion>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Title>Serilog 接入阿里云日志服务</Title>
-        <Description>Serilog Write to Aliyun SLS</Description>
+        <Title></Title>
+        <Description>Serilog 接入阿里云日志服务</Description>
         <PackageProjectUrl>https://github.com/Y2zz/Serilog.Sinks.Aliyun</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Y2zz/Serilog.Sinks.Aliyun</RepositoryUrl>
         <PackageTags>Serilog,Aliyun,SLS</PackageTags>
         <Authors>Y2zz</Authors>
         <RepositoryType>Public</RepositoryType>
+        <PackageVersion>1.0.1</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>

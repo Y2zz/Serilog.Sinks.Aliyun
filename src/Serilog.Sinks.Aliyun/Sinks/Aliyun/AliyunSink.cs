@@ -56,7 +56,7 @@ public class AliyunSink : ILogEventSink
             Time = DateUtils.TimeSpan(),
             Contents = new List<LogContent>
             {
-                new(nameof(logEvent.Timestamp), logEvent.Timestamp.ToString("yyyy-MM-dd hh:mm:ss")),
+                new(nameof(logEvent.Timestamp), logEvent.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")),
                 new(nameof(logEvent.Level), logEvent.Level.ToString()),
                 new("Message", logEvent.RenderMessage()),
             }
