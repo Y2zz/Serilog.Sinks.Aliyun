@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Serilog</RootNamespace>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <LangVersion>default</LangVersion>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Title>Serilog 接入阿里云日志服务</Title>
+        <Description>Serilog Write to Aliyun SLS</Description>
+        <PackageProjectUrl>https://github.com/Y2zz/Serilog.Sinks.Aliyun</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Y2zz/Serilog.Sinks.Aliyun</RepositoryUrl>
+        <PackageTags>Serilog,Aliyun,SLS</PackageTags>
+        <Authors>Y2zz</Authors>
+        <RepositoryType>Public</RepositoryType>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="aliyun-log-csharp-sdk" Version="1.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0" />
+      <PackageReference Include="Serilog" Version="2.10.0" />
+      <PackageReference Include="Serilog.Sinks.PeriodicBatching" Version="2.3.1" />
+    </ItemGroup>
+
+</Project>
