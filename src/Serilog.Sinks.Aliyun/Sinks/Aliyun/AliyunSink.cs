@@ -1,7 +1,7 @@
-using Aliyun.Api.LOG;
-using Aliyun.Api.LOG.Common.Utilities;
-using Aliyun.Api.LOG.Data;
-using Aliyun.Api.LOG.Request;
+using Aliyun.Api.LogService;
+using Aliyun.Api.LogService.Domain.Log;
+using Aliyun.Api.LogService.Infrastructure.Protocol.Http;
+using Nito.AsyncEx;
 using Serilog.Core;
 using Serilog.Events;
 
@@ -11,6 +11,11 @@ public class AliyunSink : ILogEventSink
 {
     public AliyunSink(AliyunOption option)
     {
+        if (!option.Enabled)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(option.AccessKeyId))
         {
             throw new ArgumentNullException(nameof(option.AccessKeyId));
@@ -33,45 +38,38 @@ public class AliyunSink : ILogEventSink
 
         Option = option;
 
-        Client = new LogClient(option.Domain, option.AccessKeyId, option.AccessKeySecret)
-        {
-            ReadWriteTimeout = option.ReadWriteTimeout
-        };
+        Client = LogServiceClientBuilders.HttpBuilder
+            .Endpoint(option.Domain, option.Project)
+            .Credential(option.AccessKeyId, option.AccessKeySecret)
+            .Build();
     }
 
-    private LogClient Client { get; }
+    private HttpLogServiceClient Client { get; }
     private AliyunOption Option { get; }
 
     public void Emit(LogEvent logEvent)
     {
-        var request = new PutLogsRequest
+        var request = new PostLogsRequest(Option.Logstore, new LogGroupInfo()
         {
-            Project = Option.Project,
-            Logstore = Option.Logstore,
-            LogItems = new List<LogItem>()
-        };
-
-        var logItem = new LogItem
-        {
-            Time = DateUtils.TimeSpan(),
-            Contents = new List<LogContent>
+            Logs = new List<LogInfo>
             {
-                new(nameof(logEvent.Timestamp), logEvent.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")),
-                new(nameof(logEvent.Level), logEvent.Level.ToString()),
-                new("Message", logEvent.RenderMessage()),
+                new()
+                {
+                    Time = DateTime.Now,
+                    Contents = new Dictionary<string, string>
+                    {
+                        { "Level", logEvent.Level.ToString() },
+                        { "Message", logEvent.RenderMessage() }
+                    }
+                }
             }
-        };
+        });
 
-        // 仅异常时处理
-        if (logEvent.Exception != null)
+        // send
+        var response = AsyncContext.Run(async ()=> await Client.PostLogStoreLogsAsync(request));
+        if (!response.IsSuccess)
         {
-            logItem.PushBack(nameof(logEvent.Exception.Source), logEvent.Exception.Source);
-            logItem.PushBack(nameof(logEvent.Exception.Message), logEvent.Exception.Message);
-            logItem.PushBack(nameof(logEvent.Exception.StackTrace), logEvent.Exception.StackTrace);
+            throw new Exception(response.Error.ErrorMessage);
         }
-
-        request.LogItems.Add(logItem);
-
-        Client.PutLogs(request);
     }
 }

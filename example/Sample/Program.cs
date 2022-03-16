@@ -8,7 +8,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var aliyunOption = new AliyunOption()
+        var aliyunOption = new AliyunOption
         {
             AccessKeyId = "",
             AccessKeySecret = "",
@@ -20,10 +20,12 @@ public class Program
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Verbose()
             .Enrich.FromLogContext()
+            .WriteTo.Async(x=> x.Console())
             .WriteTo.Async(c=> c.AliyunLog(aliyunOption))
             .CreateLogger();
         
         Log.Logger.Debug("这是一条日志");
+        Console.ReadKey();
     }
 }
 

@@ -4,21 +4,21 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>Serilog</RootNamespace>
-        <TargetFramework>netstandard2.1</TargetFramework>
         <LangVersion>default</LangVersion>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Title></Title>
         <Description>Serilog 接入阿里云日志服务</Description>
         <PackageProjectUrl>https://github.com/Y2zz/Serilog.Sinks.Aliyun</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Y2zz/Serilog.Sinks.Aliyun</RepositoryUrl>
         <PackageTags>Serilog,Aliyun,SLS</PackageTags>
         <Authors>Y2zz</Authors>
         <RepositoryType>Public</RepositoryType>
-        <PackageVersion>1.0.1</PackageVersion>
+        <PackageVersion>1.1.0</PackageVersion>
+        <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="aliyun-log-csharp-sdk" Version="1.0.1" />
+      <PackageReference Include="Aliyun.SLS.SDK" Version="1.1.1" />
+      <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
       <PackageReference Include="Serilog" Version="2.10.0" />
     </ItemGroup>
 

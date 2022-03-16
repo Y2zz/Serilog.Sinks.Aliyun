@@ -32,4 +32,10 @@ public class AliyunOption
     /// 默认值：10000
     /// </summary>
     public int ReadWriteTimeout { get; set; } = 10000;
+    
+    /// <summary>
+    /// 启用
+    /// 默认值：true
+    /// </summary>
+    public bool Enabled { get; set; } = true;
 }
