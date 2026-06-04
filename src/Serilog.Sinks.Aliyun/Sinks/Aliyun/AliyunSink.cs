@@ -1,16 +1,20 @@
 using Aliyun.Api.LogService;
 using Aliyun.Api.LogService.Domain.Log;
-using Aliyun.Api.LogService.Infrastructure.Protocol.Http;
-using Nito.AsyncEx;
 using Serilog.Core;
+using Serilog.Debugging;
 using Serilog.Events;
 
 namespace Serilog.Sinks.Aliyun;
 
 public class AliyunSink : ILogEventSink
 {
-    public AliyunSink(AliyunOption option)
+    private readonly AliyunOption _option;
+    private readonly ILogServiceClient? _client;
+
+    public AliyunSink (AliyunOption option)
     {
+        _option = option;
+
         if (!option.Enabled)
         {
             return;
@@ -26,50 +30,74 @@ public class AliyunSink : ILogEventSink
             throw new ArgumentNullException(nameof(option.AccessKeySecret));
         }
 
+        if (string.IsNullOrWhiteSpace(option.Domain))
+        {
+            throw new ArgumentNullException(nameof(option.Domain));
+        }
+
         if (string.IsNullOrWhiteSpace(option.Project))
         {
-            throw new ArgumentNullException(option.Project);
+            throw new ArgumentNullException(nameof(option.Project));
         }
 
         if (string.IsNullOrWhiteSpace(option.Logstore))
         {
-            throw new ArgumentNullException(option.Logstore);
+            throw new ArgumentNullException(nameof(option.Logstore));
         }
 
-        Option = option;
-
-        Client = LogServiceClientBuilders.HttpBuilder
-            .Endpoint(option.Domain, option.Project)
+        _client = LogServiceClientBuilders.HttpBuilder
+            .Endpoint($"https://{option.Domain}", option.Project)
             .Credential(option.AccessKeyId, option.AccessKeySecret)
             .Build();
     }
 
-    private HttpLogServiceClient Client { get; }
-    private AliyunOption Option { get; }
-
-    public void Emit(LogEvent logEvent)
+    public void Emit (LogEvent logEvent)
     {
-        var request = new PostLogsRequest(Option.Logstore, new LogGroupInfo()
+        if (_client == null)
         {
-            Logs = new List<LogInfo>
-            {
-                new()
-                {
-                    Time = DateTime.Now,
-                    Contents = new Dictionary<string, string>
-                    {
-                        { "Level", logEvent.Level.ToString() },
-                        { "Message", logEvent.RenderMessage() }
-                    }
-                }
-            }
-        });
+            return;
+        }
 
-        // send
-        var response = AsyncContext.Run(async ()=> await Client.PostLogStoreLogsAsync(request));
-        if (!response.IsSuccess)
+        try
         {
-            throw new Exception(response.Error.ErrorMessage);
+            var logInfo = new LogInfo
+            {
+                Time = logEvent.Timestamp,
+                Contents = new Dictionary<string, string>
+                {
+                    ["Level"] = logEvent.Level.ToString(),
+                    ["Message"] = logEvent.RenderMessage()
+                }
+            };
+
+            if (logEvent.Exception != null)
+            {
+                logInfo.Contents["Exception"] = logEvent.Exception.ToString();
+            }
+
+            var logGroup = new LogGroupInfo
+            {
+                Topic = "",
+                Source = "",
+                Logs = new List<LogInfo> { logInfo }
+            };
+
+            var response = _client.PostLogStoreLogsAsync(_option.Logstore, logGroup)
+                .ConfigureAwait(false).GetAwaiter().GetResult();
+
+            if (!response.IsSuccess)
+            {
+                SelfLog.WriteLine(
+                    "[AliyunSink] 发送日志失败, 错误码: {0}, 错误消息: {1}",
+                    response.Error.ErrorCode,
+                    response.Error.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            SelfLog.WriteLine(
+                "[AliyunSink] 发送日志异常: {0}", ex.Message);
+            throw;
         }
     }
 }
