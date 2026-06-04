@@ -16,17 +16,17 @@ dotnet add package Serilog.Sinks.Aliyun
 |---|---|---|
 | `AccessKeyId` | Access Key ID | 是 |
 | `AccessKeySecret` | Access Key Secret | 是 |
-| `Domain` | 服务入口，如 `cn-shanghai.log.aliyuncs.com` | 是 |
+| `Endpoint` | 服务入口，如 `cn-shanghai.log.aliyuncs.com` | 是 |
 | `Project` | 阿里云 SLS 项目名称 | 是 |
 | `Logstore` | LogStore 名称 | 是 |
 | `ReadWriteTimeout` | 超时时间（毫秒），默认 10000 | 否 |
 | `Enabled` | 是否启用，默认 true | 否 |
 
-### 获取正确的 Domain 和 Project
+### 获取正确的 Endpoint 和 Project
 
 1. 登录 [阿里云 SLS 控制台](https://sls.console.aliyun.com/)
 2. 进入你的项目，在 **概览** 页找到 **服务入口**
-3. `Domain` 填入服务入口（区域域名，如 `cn-shanghai.log.aliyuncs.com`）
+3. `Endpoint` 填入服务入口（区域域名，如 `cn-shanghai.log.aliyuncs.com`）
 4. `Project` 填入控制台中的项目名称
 
 > 注意：项目名必须与你在阿里云 SLS 创建的项目名称完全一致，否则会连接失败。
@@ -37,12 +37,13 @@ dotnet add package Serilog.Sinks.Aliyun
 
 ```csharp
 using Serilog;
+using Serilog.Sinks.Aliyun;
 
 var option = new AliyunOption
 {
-    AccessKeyId = "your-access-key-id",
-    AccessKeySecret = "your-access-key-secret",
-    Domain = "cn-shanghai.log.aliyuncs.com",
+    AccessKeyId = Environment.GetEnvironmentVariable("ALIYUN_ACCESS_KEY_ID"),
+    AccessKeySecret = Environment.GetEnvironmentVariable("ALIYUN_ACCESS_KEY_SECRET"),
+    Endpoint = "cn-shanghai.log.aliyuncs.com",
     Project = "your-project",
     Logstore = "your-logstore"
 };
@@ -61,25 +62,23 @@ Log.Information("这是一条日志");
 ```json
 {
   "AliyunSLS": {
-    "Domain": "cn-shanghai.log.aliyuncs.com",
+    "Endpoint": "",
     "Project": "",
     "Logstore": "",
-    "AccessKeyId": "",
-    "AccessKeySecret": "",
     "ReadWriteTimeout": 10000,
     "Enabled": true
   }
 }
 ```
 
-> 敏感字段（AccessKeyId / AccessKeySecret）建议留空，通过 UserSecrets 或环境变量注入。
+> 敏感字段（AccessKeyId / AccessKeySecret / Endpoint / Project / Logstore）建议留空，通过 UserSecrets 或环境变量注入。
 
 ```csharp
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
 var configuration = new ConfigurationBuilder()
-    .SetBasePath(Directory.GetCurrentDirectory())
+    .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", false, true)
     .AddUserSecrets<Program>(true)
     .AddEnvironmentVariables("ALIYUN_")
@@ -98,15 +97,31 @@ Log.Information("这是一条日志");
 .WriteTo.AliyunLog(configuration, sectionName: "MySection")
 ```
 
+### 多 Logstore 配置
+
+支持向多个 Logstore 写入，只需定义不同的配置节：
+
+```json
+{
+  "AliyunSLS": { "Endpoint": "", "Project": "", "Logstore": "app-logs", ... },
+  "AliyunSLS_Error": { "Endpoint": "", "Project": "", "Logstore": "error-logs", ... }
+}
+```
+
+```csharp
+.WriteTo.AliyunLog(configuration)                                   // 默认 AliyunSLS
+.WriteTo.AliyunLog(configuration, sectionName: "AliyunSLS_Error")   // 错误日志独立 Logstore
+```
+
 ## 机密配置管理
 
-支持三层配置回退机制：
+支持多层配置回退机制，优先级从高到低：
 
 | 优先级 | 来源 | 示例 |
 |---|---|---|
-| 1（最高） | `appsettings.json` | `AccessKeyId: "xxx"` |
-| 2 | UserSecrets | `dotnet user-secrets set "AliyunSLS:AccessKeyId" "xxx"` |
-| 3（最低） | 环境变量（需加入配置链） | `ALIYUN_ACCESS_KEY_ID=xxx` |
+| 1（最高） | 环境变量（库内置回退） | `ALIYUN_ENDPOINT=xxx` |
+| 2 | `IConfiguration` 链（appsettings.json / UserSecrets / 环境变量） | |
+| 3（最低） | `IConfiguration` 链中的 appsettings.json | `"Endpoint": ""` |
 
 ### UserSecrets（开发环境）
 
@@ -114,30 +129,28 @@ Log.Information("这是一条日志");
 dotnet user-secrets init
 dotnet user-secrets set "AliyunSLS:AccessKeyId" "your-access-key-id"
 dotnet user-secrets set "AliyunSLS:AccessKeySecret" "your-access-key-secret"
-dotnet user-secrets set "AliyunSLS:Domain" "cn-shanghai.log.aliyuncs.com"
+dotnet user-secrets set "AliyunSLS:Endpoint" "cn-shanghai.log.aliyuncs.com"
 dotnet user-secrets set "AliyunSLS:Project" "your-project"
 dotnet user-secrets set "AliyunSLS:Logstore" "your-logstore"
 ```
 
 ### 环境变量（CI/CD）
 
+库内置环境变量回退（默认前缀 `ALIYUN_`），与 .NET 配置链独立：
+
 ```shell
-export ALIYUN_AccessKeyId=your-access-key-id
-export ALIYUN_AccessKeySecret=your-access-key-secret
-export ALIYUN_Domain=cn-shanghai.log.aliyuncs.com
-export ALIYUN_Project=your-project
-export ALIYUN_Logstore=your-logstore
+export ALIYUN_ACCESS_KEY_ID=your-access-key-id
+export ALIYUN_ACCESS_KEY_SECRET=your-access-key-secret
+export ALIYUN_ENDPOINT=cn-shanghai.log.aliyuncs.com
+export ALIYUN_PROJECT=your-project
+export ALIYUN_LOGSTORE=your-logstore
 ```
 
-### 库内置环境变量回退（可选）
-
-除 .NET 配置链外，还可以通过扩展方法的 `environmentVariablePrefix` 参数指定额外的环境变量前缀：
+也可通过扩展方法自定义前缀：
 
 ```csharp
-.WriteTo.AliyunLog(configuration, environmentVariablePrefix: "ALIYUN_")
+.WriteTo.AliyunLog(configuration, environmentVariablePrefix: "MYAPP_")
 ```
-
-当配置链中某字段为空时，会自动读取 `{prefix}{key}` 格式的环境变量（如 `ALIYUN_AccessKeyId`）。
 
 ## 调试
 
@@ -157,20 +170,25 @@ Serilog.Debugging.SelfLog.Enable(Console.Error);
 
 **检查**：
 1. 确认 Project 名称与阿里云 SLS 控制台完全一致
-2. 确认 Domain（服务入口）与项目所在区域匹配
-3. 用 `nslookup {project}.{domain}` 检查 DNS 是否解析到有效 IP
+2. 确认 Endpoint（服务入口）与项目所在区域匹配
+3. 用 `nslookup {project}.{endpoint}` 检查 DNS 是否解析到有效 IP
    - 如果返回 `0.0.0.0`，说明项目名或区域错误
 
-### 项目名或区域错误
+### 修改 appsettings.json 后未生效
 
-DNS 会解析为 `0.0.0.0`，需要在控制台确认正确的项目名和区域。
+输出目录存在旧缓存文件，请执行 `dotnet clean && dotnet build` 强制同步。
 
 ## 依赖
 
 - [`aliyun-log-dotnetcore-sdk`](https://www.nuget.org/packages/aliyun-log-dotnetcore-sdk) — 阿里云 SLS 官方 SDK
-- [`Microsoft.Extensions.Configuration.Abstractions`](https://www.nuget.org/packages/Microsoft.Extensions.Configuration.Abstractions) — 配置绑定
+- [`Microsoft.Extensions.Configuration.Abstractions`](https://www.nuget.org/packages/Microsoft.Extensions.Configuration.Abstractions) — 配置抽象
+- [`Microsoft.Extensions.Configuration.Binder`](https://www.nuget.org/packages/Microsoft.Extensions.Configuration.Binder) — 配置绑定
 - [`Serilog`](https://www.nuget.org/packages/Serilog) — Serilog 核心库
 
 ## 项目示例
 
-参考 [`example/Sample`](./example/Sample/) 项目。
+| 目录 | 场景 | 运行方式 |
+|---|---|---|
+| [`example/01-DirectOption`](./example/01-DirectOption) | 直接传参 | `dotnet run --project example/01-DirectOption` |
+| [`example/02-IConfiguration`](./example/02-IConfiguration) | IConfiguration 绑定（推荐） | `dotnet run --project example/02-IConfiguration` |
+| [`example/03-MultiLogstore`](./example/03-MultiLogstore) | 多 Logstore + 环境变量覆盖 | `dotnet run --project example/03-MultiLogstore` |

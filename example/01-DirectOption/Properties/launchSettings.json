@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "01-DirectOption": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ALIYUN_SLS_ENDPOINT": "cn-shanghai.log.aliyuncs.com",
+        "ALIYUN_SLS_ACCESS_KEY_ID": "",
+        "ALIYUN_SLS_ACCESS_KEY_SECRET": "",
+        "ALIYUN_SLS_PROJECT": "",
+        "ALIYUN_SLS_LOGSTORE": ""
+      }
+    }
+  }
+}
